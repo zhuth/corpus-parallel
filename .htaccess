@@ -1,0 +1,21 @@
+AddDefaultCharset utf-8
+IndexOptions +Charset=UTF-8
+DirectoryIndex index.html
+AddHandler wsgi-script .wsgi
+
+Order allow,deny
+Allow from all
+
+<FilesMatch (.*)\.(sqlite|py)$>
+Order Allow,Deny
+Deny from all
+</FilesMatch>
+
+Options +FollowSymLinks +ExecCGI
+RewriteEngine On
+RewriteBase /jindai/
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^(.*)$ site.wsgi/$1 [QSA,PT,L]
+
+#Header Set Access-Control-Allow-Origin "*"
+

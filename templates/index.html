@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Corpus</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="static/style.css">
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-modal/0.9.1/jquery.modal.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-modal/0.9.1/jquery.modal.min.css" />
+</head>
+
+<body>
+    <div style="text-align: right; margin-right: 20px;">欢迎，{{ login }}</div>
+    <form action="" method="POST" id="ux_form">
+        <img src="static/logo.png" alt="Logo"><br />
+        <select name="dbname" id="ux_name" onchange="load_pdffiles()">
+            <option value="">全部</option>
+        </select>
+        <select name="pdffile" id="ux_pdffile">
+            <option value="">全部</option>
+        </select>
+        <a id="show_help" href="#help" rel="modal:open"><i class="question"></i></a>
+        <input type="text" name="q" id="ux_q">
+        <div id="ux_collections">
+        </div>
+        <button>查询</button>
+    </form>
+    <form action="export" method="POST" id="ux_print">
+        <input type="hidden" name="q">
+    </form>
+    <ul class="results"></ul>
+    <div class="nav"></div>
+
+    <div id="help" class="modal">
+        <h3>帮助</h3>
+        <p>
+            关键词支持一些高级技巧。包括：<br />
+            :strict 全文匹配模式，适用于区分大小写的情形<br />
+            sort:year 按年份排序；sort:-year 按年份降序排序；sort:pdfname,-year 按 PDF 文件名顺序，相同文件名再按年份降序排序<br />
+            r:[exp] 按正则表达式匹配单词<br />
+            re:[exp] 按正则表达式匹配全文<br />
+            outline:1.1 匹配大纲编号<br />
+            [prefix]? 匹配以[prefix]开头的所有单词<br />
+        </p>
+    </div>
+
+    <script>
+        var results = [];
+
+        String.prototype.format = function (d) { return this.replace(/\{(\w+)\}/g, function (a, g) { return d[g] || ''; }); }
+
+        $.get('collections', function (data) {
+            const o = $('#ux_name')
+            function _create(disp, arr) {
+                const k = arr[0], v = arr[1];
+                if (typeof(v) === 'string')
+                    disp.append(`<option value="{k}">{v}</option>`.format({k:k, v:v}));
+                else {
+                    let ndisp = disp.append(`<optgroup label="{k}">`.format({k: k})).children().last();
+                    v.forEach(x => _create(ndisp, x));
+                }
+            }
+            data.forEach(x => _create(o, x));
+
+            $('#ux_collections').html(
+                $('select>option').toArray().filter(x => x.value).map(x =>
+                    `<input id="ux_chk_{value}" name="collections" value="{value}" type="checkbox">
+                <label for="ux_chk_{value}">{innerText}</label>`.format(x)).join(' ')
+            );
+
+        })
+
+        function gen_q() {
+            var q = ux_q.value || '';
+
+            if (!q) {
+                $('.results').html('请输入查询内容');
+                return;
+            }
+
+            if (ux_name.value)
+                q += ' collection:"' + ux_name.value + '"'
+            if (ux_pdffile.value)
+                q += ' pdffile:"' + ux_pdffile.value + '"';
+            if ($('#ux_collections input:checked').length)
+                q += ' collections:' + $('#ux_collections input:checked').toArray().map(x=>x.value).join(',')
+
+            return q;
+        }
+
+        $('#ux_form').bind('submit', function () {
+            $('.results').html('正在加载...');
+            $('.nav').html(''); 
+
+            $.post('search', { 'q': gen_q() }, function (data) {
+                results = data.results;
+                render(0);
+            });
+            return false;
+        });
+
+        function load_pdffiles() {
+            const sel = $('select#ux_pdffile');
+            sel.html('<option value="">全部</option>');
+            if (!$('#ux_name').val()) {
+                $('#ux_collections').show();
+                return;
+            } else {
+                $('#ux_collections').hide();
+                $.get('pdffile?collection=' + $('#ux_name').val()).then(function (data) {
+                    data.forEach(function (p) {
+                        sel.append('<option value="{pdffile}">{disp}</option>'.format(p));
+                    });
+                });
+            }
+        }
+
+        function print_all() {
+            const q = gen_q();
+            if (q) {
+                $('#ux_print [name="q"]').val(q);
+                $('#ux_print').submit();
+            }
+        }
+        
+        function render(offset) {
+            offset = offset || 0;
+            const r = $('.results');
+            const nav = $('.nav');
+            const kws = new RegExp('(' + ux_q.value.split(' ').join('|') + ')', 'g');
+            
+            if (!results.length) { r.html('No results.'); return; }
+            r.html('');
+            results.slice(offset, offset + 20).forEach(function (res) {
+                r.append('<li></li>');
+                res.contentEm = $('<div>' + res.content + '</div>').text().substr(0, 500).replace(kws, function (a, b) { return '<em>' + b + '</em>'; });
+                r.children().last().append(`
+                <span>{collection}[{lang}] {year}</span>
+                <a target="_blank" href="view?collection={collection}&outline={outline}">{outline}</a>
+                <a target="_blank" href="view?collection={collection}&{pdfencoded}">{pdffile} : {pagenum}</a>
+                <p>{contentEm}</p>`.format(res));
+            });
+            
+            nav.html('');
+            if (offset) {
+                nav.append('<button class="prev_page" onclick="render(' + (offset - 20) + ')">Prev</button>');
+            }
+            nav.append(' {0}-{1}/{2} '.format([offset + 1, Math.min(offset + 20, results.length), results.length >= 100 ? '100+' : results.length]));
+            if (offset + 20 < results.length) {
+                nav.append('<button class="next_page" onclick="render(' + (offset + 20) + ')">Next</button>');
+            }
+            nav.append('<button onclick="print_all()">Export</button>');
+
+        }
+
+        if (location.hash.length > 1) {
+            var o = location.hash.substr(1);
+            $('select#ux_name').html('<option value="' + o + '">' + o + '</option>');
+            load_pdffiles();
+        }
+        </script>
+</body>
+
+</html>
