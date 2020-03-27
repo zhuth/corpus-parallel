@@ -90,7 +90,7 @@ def P(cond):
     }.get(cond.lower(), Paragraph)
 
 
-meta = Meta.first({})
+get_meta = lambda: Meta.first({})
 
 
 def get_all_collections():

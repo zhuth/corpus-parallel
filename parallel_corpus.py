@@ -22,6 +22,7 @@ def redirect(path):
 
 # COMMANDS
 def add_user(uname, password):
+    meta = get_meta()
     meta['users'].append(encrypt_password(uname, password))
     meta.save()
 
@@ -349,6 +350,7 @@ def import_pdf(name, lang, *files_or_patterns):
                     P(name)(lang=lang, content=para, pdffile=pdffile,
                             pdfpage=p, pagenum=p+1, collection=name).save()
 
+    meta = get_meta()
     meta.pdffiles[name] = None
     meta.save()
 
@@ -376,6 +378,7 @@ def import_html(name, lang, *files):
             with open(f, 'rb') as fin:
                 import_html_src(f, fin)
 
+    meta = get_meta()
     meta.pdffiles[name] = None
     meta.save()
 
@@ -535,7 +538,7 @@ def login_view():
     if request.form.get('u'):
         u = request.form.get('u')
         p = request.form.get('p')
-        if encrypt_password(u, p) in meta['users']:
+        if encrypt_password(u, p) in get_meta()['users']:
             session['login'] = u
             return redirect('./')
         else:
@@ -633,6 +636,7 @@ def safe_filename(q):
 @app.route("/collections")
 @require_login
 def get_collections():
+    meta = get_meta()
     return jsonify(meta.collections)
 
 
@@ -651,6 +655,7 @@ def export_view():
 @require_login
 def search():
     q = request.args.get('q', request.form.get('q', ''))
+    meta = get_meta()
     meta.history = (meta.history + [q])[-20:]
     meta.save()
 
