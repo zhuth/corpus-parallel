@@ -14,6 +14,7 @@ Deny from all
 Options +FollowSymLinks +ExecCGI
 RewriteEngine On
 RewriteBase /jindai/
+RewriteRule image(.*) http://172.24.0.98:8371/image$1 [P]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteRule ^(.*)$ site.wsgi/$1 [QSA,PT,L]
 
