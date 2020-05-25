@@ -593,18 +593,8 @@ def show_content():
     prev_para, next_para = '', ''
 
     if pdffile:
-        prev_para = 'view?collection=' + name + '&' + pdfbase_encode(
-            P(cond).query(
-                cond & (F.pdffile < pdffile) | (
-                    (F.pdffile == pdffile) & (F.pdfpage < pdfpage))
-            ).sort(-F.pdffile, -F.pdfpage).first()
-        )
-        next_para = 'view?collection=' + name + '&' + pdfbase_encode(
-            P(cond).query(
-                cond & (F.pdffile > pdffile) | (
-                    (F.pdffile == pdffile) & (F.pdfpage > pdfpage))
-            ).sort(F.pdffile, F.pdfpage).first()
-        )
+        prev_para = 'view?collection=' + name + '&' + f'pdffile={urlencode(pdffile)}&pdfpage={pdfpage-1}'
+        next_para = 'view?collection=' + name + '&' + f'pdffile={urlencode(pdffile)}&pdfpage={pdfpage+1}'
         cond &= F.pdffile == pdffile
         cond &= F.pdfpage == pdfpage
 
