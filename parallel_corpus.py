@@ -7,6 +7,7 @@ import io
 import re
 import time
 import datetime
+import subprocess
 from urllib.parse import quote as urlencode
 
 from models import *
@@ -347,13 +348,41 @@ def import_pdf(name, lang, *files_or_patterns):
                              for _ in lines]
 
                 for para in merge_lines(lines, lang):
-                    P(name)(lang=lang, content=para, pdffile=pdffile,
+                    try:
+                        P(name)(lang=lang, content=para.encode('utf-8', errors='ignore').decode('utf-8'), pdffile=pdffile,
                             pdfpage=p, pagenum=p+1, collection=name).save()
+                    except Exception as e:
+                        print(pdffile, p+1, e)
 
     meta = get_meta()
     meta.pdffiles[name] = None
     meta.save()
 
+
+def import_word(name, lang, *files):
+
+    def call_abiword(file):
+        fn = f'/tmp/{time.time()}'
+        subprocess.call(['abiword', '--to', 'txt', '-o', fn, file])
+        if os.path.exists(fn):
+            with open(fn, encoding='utf-8') as fi:
+                res = fi.read()
+            os.unlink(fn)
+            return res
+    
+    for f in files:
+        doc = call_abiword(f)
+        if doc:
+            p = P(name)(
+                lang=lang, content=doc, pdffile=f, pdfpage=0, pagenum=1,
+                collection=name, outline=''
+            )
+            p.save()
+
+    meta = get_meta()
+    meta.pdffiles[name] = None
+    meta.save()
+    
 
 def import_html(name, lang, *files):
     import zipfile
@@ -383,7 +412,7 @@ def import_html(name, lang, *files):
     meta.save()
 
 
-def find_match(q):
+def find_match(q, collection_fixation=''):
     '''
     Query string `q` is a set of keywords (phrases) with options marked with ':'
     available options:
@@ -434,6 +463,9 @@ def find_match(q):
     kws, opts = _kws(q)
 
     cond = F.keywords.all(kws) if kws else MongoOperand({})
+
+    if collection_fixation:
+        cond &= F.collection == collection_fixation
 
     optd = {}
     for optn, optv in opts:
@@ -548,7 +580,6 @@ def login_view():
 
 
 @app.route('/pdffile')
-@require_login
 def pdffiles_view():
     name = request.args.get('collection')
     r = pdffiles(name)
@@ -578,7 +609,6 @@ def page_image():
 
 
 @app.route("/view")
-@require_login
 def show_content():
     name = request.args.get('collection')
     pdffile, pdfpage, outline = request.args.get('pdffile'), int(
@@ -665,6 +695,23 @@ def search():
         _['pdfencoded'] = pdfbase_encode(_)
 
     return jsonify({'results': results, 'cond': cond})
+
+
+@app.route("/special-<collection>", methods=["POST", "GET"])
+def special_search(collection):
+
+    if request.method == 'POST':
+        q = request.form.get('q', '') + ' :all'
+
+        results, cond = find_match(q, collection)
+        results = list(results)
+        for _ in results:
+            _['pdfencoded'] = pdfbase_encode(_)
+
+        return jsonify({'results': results, 'cond': cond})
+
+    else:
+        return render_template('special.html', collection=collection)
 
 
 @app.route("/change/<rid>/<oper>/<args>", methods=["POST", "GET"])
