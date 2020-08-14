@@ -530,6 +530,10 @@ def export_xlsx(q, fn=''):
     from io import BytesIO
     wb = openpyxl.Workbook()
     ws = wb.active
+    ILLEGAL_CHARACTERS_RE = re.compile(r'[\000-\010]|[\013-\014]|[\016-\037]')
+
+    def _s(s):
+        return ILLEGAL_CHARACTERS_RE.sub(r'', str(s))
 
     count = 0
     for rd in results:
@@ -538,7 +542,7 @@ def export_xlsx(q, fn=''):
             fields[0] = '#'
             ws.append(fields)
         count += 1
-        ws.append([str(rd[_]) if _ != '#' else str(count) for _ in fields])
+        ws.append([_s(rd[_]) if _ != '#' else str(count) for _ in fields])
 
     if not fn:
         buf = BytesIO()
@@ -619,18 +623,8 @@ def show_content():
     prev_para, next_para = '', ''
 
     if pdffile:
-        prev_para = 'view?collection=' + name + '&' + pdfbase_encode(
-            P(cond).query(
-                cond & (F.pdffile < pdffile) | (
-                    (F.pdffile == pdffile) & (F.pdfpage < pdfpage))
-            ).sort(-F.pdffile, -F.pdfpage).first()
-        )
-        next_para = 'view?collection=' + name + '&' + pdfbase_encode(
-            P(cond).query(
-                cond & (F.pdffile > pdffile) | (
-                    (F.pdffile == pdffile) & (F.pdfpage > pdfpage))
-            ).sort(F.pdffile, F.pdfpage).first()
-        )
+        prev_para = 'view?collection=' + name + '&' + f'pdffile={urlencode(pdffile)}&pdfpage={pdfpage-1}'
+        next_para = 'view?collection=' + name + '&' + f'pdffile={urlencode(pdffile)}&pdfpage={pdfpage+1}'
         cond &= F.pdffile == pdffile
         cond &= F.pdfpage == pdfpage
 
@@ -749,6 +743,12 @@ def operate(rid, oper, args=''):
 def index_view():
     return render_template('index.html', login=session['login'])
 
+
+@app.route('/wsd')
+@require_login
+def wsd_view():
+    return render_template('wsd.html')
+    
 
 @app.route('/wiki')
 @require_login

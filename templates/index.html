@@ -32,7 +32,9 @@
     <form action="export" method="POST" id="ux_print">
         <input type="hidden" name="q">
     </form>
-    <ul class="results"></ul>
+    <ul class="results">
+        新上线: <a href="wsd">早稻田大学公开古代和近代文献检索 (镜像)</a>
+    </ul>
     <div class="nav"></div>
 
     <div id="help" class="modal">
@@ -77,11 +79,6 @@
         function gen_q() {
             var q = ux_q.value || '';
 
-            if (!q) {
-                $('.results').html('请输入查询内容');
-                return;
-            }
-
             if (ux_name.value)
                 q += ' collection:"' + ux_name.value + '"'
             if (ux_pdffile.value)
@@ -95,8 +92,15 @@
         $('#ux_form').bind('submit', function () {
             $('.results').html('正在加载...');
             $('.nav').html(''); 
+            
+            const q = gen_q();
+            if (!q) {
+                $('.results').html('请输入查询内容');
+                return;
+            }
 
-            $.post('search', { 'q': gen_q() }, function (data) {
+
+            $.post('search', { 'q': q }, function (data) {
                 results = data.results;
                 render(0);
             });

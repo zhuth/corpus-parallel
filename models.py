@@ -105,6 +105,7 @@ def pdffiles(name):
     res = meta.pdffiles.get(name)
     if not res:
         res = [_.pdffile for _ in Paragraph.aggregator.match(F.collection == name).group(_id=Var.pdffile).project(pdffile=Var._id).perform()]
+        meta = get_meta()
         meta.pdffiles[name] = res
         meta.save()
 
