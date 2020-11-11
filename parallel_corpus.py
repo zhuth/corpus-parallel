@@ -596,7 +596,7 @@ def page_image():
     pdffile, pdfpage = request.args.get('pdffile'), int(
         request.args.get('pdfpage', '0'))
     pdfpage += 1
-    pdffile = f'sources/{pdffile}'.encode('utf-8')
+    pdffile = f'sources/{pdffile}'
     if not os.path.exists(pdffile):
         return 'Not found', 404
 

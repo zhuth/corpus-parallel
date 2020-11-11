@@ -44,11 +44,31 @@ class Paragraph(DbObject):
 
 
 class RMRB(Paragraph):
-    pass
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        
+    def __getattribute__(self, k):
+        return super().__getattribute__(k)
+
 
 
 class SLG(Paragraph):
-    pass
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+    
+    def __getattribute__(self, k):
+        return super().__getattribute__(k)
+
+
+class HYJD(Paragraph):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+    
+    def __getattribute__(self, k):
+        return super().__getattribute__(k)
 
 
 class Meta(DbObject):
@@ -86,7 +106,8 @@ def P(cond):
         return Paragraph
     return {
         'rmrb': RMRB,
-        'slg': SLG
+        'slg': SLG,
+        'hyjd': HYJD
     }.get(cond.lower(), Paragraph)
 
 
@@ -98,13 +119,13 @@ def get_all_collections():
 
 
 def pdffiles(name):
-    if name in ('slg', 'rmrb'):
+    if name in ('slg', 'rmrb', ''):
         return []
     
     meta = get_meta()
     res = meta.pdffiles.get(name)
     if not res:
-        res = [_.pdffile for _ in Paragraph.aggregator.match(F.collection == name).group(_id=Var.pdffile).project(pdffile=Var._id).perform()]
+        res = [_.pdffile for _ in P(name).aggregator.match(F.collection == name).group(_id=Var.pdffile).project(pdffile=Var._id).perform()]
         meta = get_meta()
         meta.pdffiles[name] = res
         meta.save()
