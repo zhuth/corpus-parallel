@@ -470,7 +470,10 @@ def find_match(q, collection_fixation=''):
     optd = {}
     for optn, optv in opts:
         if optn == 'pdffile':
-            cond &= F.pdffile == optv
+            if optv.endswith('.pdf'):
+                cond &= F.pdffile == optv
+            else:
+                cond &= F.pdffile.regex(optv.replace('\\', '\\\\'))
         elif optn == 'pdfpage':
             cond &= F.pdfpage == int(optv)
         elif hasattr(Paragraph, optn[1:] if optn.startswith('!') else optn):
