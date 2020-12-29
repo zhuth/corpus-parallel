@@ -4,3 +4,4 @@ pymongo
 #git+https://github.com/zhuth/PyMongoWrapper/
 opencc-python-reimplemented
 fitz
+openpyxl
